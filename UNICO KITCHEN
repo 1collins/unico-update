@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unico Kitchen</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #fffaf4; color: #333; }
+    header { background: #ff914d; color: white; padding: 1rem; text-align: center; font-size: 1.5rem; }
+    nav { display: flex; justify-content: space-around; background: #fff3e6; padding: 0.5rem; }
+    nav button { background: none; border: none; font-size: 1rem; cursor: pointer; }
+    section { display: none; padding: 1rem; }
+    section.active { display: block; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 1rem; margin: 0.5rem 0; background: #fff; }
+    .btn { background: #ff914d; color: white; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer; }
+    .btn:hover { background: #ff6a00; }
+    input, select { padding: 0.5rem; margin: 0.5rem 0; width: 100%; }
+  </style>
+</head>
+<body>
+  <header>🍳 Unico Kitchen</header>
+  <nav>
+    <button onclick="showTab('dashboard')">Dashboard</button>
+    <button onclick="showTab('fridge')">Fridge</button>
+    <button onclick="showTab('shop')">Shop</button>
+    <button onclick="showTab('offers')">Offers</button>
+  </nav>
+
+  <section id="login" class="active">
+    <h2>Login with Code</h2>
+    <input type="text" id="studentCode" placeholder="Enter your unique code"/>
+    <button class="btn" onclick="login()">Login</button>
+  </section>
+
+  <section id="dashboard">
+    <h2>Available Recipes</h2>
+    <div id="recipes"></div>
+  </section>
+
+  <section id="fridge">
+    <h2>My Fridge</h2>
+    <div id="fridgeItems"></div>
+  </section>
+
+  <section id="shop">
+    <h2>Shop</h2>
+    <div id="shopItems"></div>
+  </section>
+
+  <section id="offers">
+    <h2>Special Offers 🎉</h2>
+    <div class="card">10% off on all Chicken Recipes today only!</div>
+  </section>
+
+  <script>
+    // CONFIG
+    const GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycby60CX0FZ3Z4--2_eAhoS3pHFqkidtyPvrt8ZfuEqoLbIGVIokLdLJOKX3w9fNtVBE1/exec';
+    const SECRET = 'unikosecret123';
+    const KITCHEN_PHONE = '254798459336'; // Your WhatsApp number
+
+    let student = null;
+
+    function showTab(tabId) {
+      document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function login() {
+      const code = document.getElementById('studentCode').value.trim();
+      if (!code) { alert('Enter your code'); return; }
+
+      fetch(GAS_WEBAPP_URL + '?action=login&secret=' + SECRET + '&code=' + code)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            student = data.student;
+            document.getElementById('login').classList.remove('active');
+            showTab('dashboard');
+            loadRecipes();
+            loadFridge();
+            loadShop();
+          } else {
+            alert('Invalid code');
+          }
+        });
+    }
+
+    function loadRecipes() {
+      fetch(GAS_WEBAPP_URL + '?action=getRecipes&secret=' + SECRET)
+        .then(res => res.json())
+        .then(data => {
+          let html = '';
+          data.recipes.forEach(r => {
+            html += `<div class="card">
+                       <h3>${r.name}</h3>
+                       <p>${r.ingredients.join(', ')}</p>
+                       <button class="btn" onclick="cookRecipe('${r.name}')">Cook Now</button>
+                     </div>`;
+          });
+          document.getElementById('recipes').innerHTML = html;
+        });
+    }
+
+    function loadFridge() {
+      fetch(GAS_WEBAPP_URL + '?action=getFridge&secret=' + SECRET + '&code=' + student.code)
+        .then(res => res.json())
+        .then(data => {
+          let html = '';
+          data.items.forEach(i => {
+            html += `<div class="card">${i}</div>`;
+          });
+          document.getElementById('fridgeItems').innerHTML = html;
+        });
+    }
+
+    function loadShop() {
+      fetch(GAS_WEBAPP_URL + '?action=getShop&secret=' + SECRET)
+        .then(res => res.json())
+        .then(data => {
+          let html = '';
+          data.shop.forEach(item => {
+            html += `<div class="card">
+                       <h3>${item.name}</h3>
+                       <img src="${item.image}" alt="${item.name}" style="width:100px"/>
+                       <p>${item.price}</p>
+                       <button class="btn" onclick="addToFridge('${item.name}')">Add to Fridge</button>
+                     </div>`;
+          });
+          document.getElementById('shopItems').innerHTML = html;
+        });
+    }
+
+    function addToFridge(item) {
+      fetch(GAS_WEBAPP_URL + '?action=addToFridge&secret=' + SECRET + '&code=' + student.code + '&item=' + encodeURIComponent(item))
+        .then(() => loadFridge());
+    }
+
+    function cookRecipe(recipeName) {
+      const message = `Hello Unico Kitchen 👩‍🍳! I want to cook: ${recipeName} (Student Code: ${student.code})`;
+      const url = `https://wa.me/${KITCHEN_PHONE}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
+    }
+  </script>
+</body>
+</html>
+
